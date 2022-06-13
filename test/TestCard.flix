@@ -4,7 +4,21 @@ namespace TestCard {
     use Card.Denomination.{Ace, Two, Three, Four, Five, Six, Seven, Eight, Nine, Ten, Jack, Queen, King};
     use Card.Suit;
     use Card.Suit.{Diamond, Club, Heart, Spade};
-    
+
+    namespace AllSuits {
+        use Card.allSuits;
+
+        @test
+        def test01(): Bool = Set.size(allSuits()) == 4
+    }
+
+    namespace AllDenominations {
+        use Card.allDenominations;
+
+        @test
+        def test01(): Bool = Set.size(allDenominations()) == 13
+    }
+
     namespace AceHighCompare {
         use Card.aceHighCompare;
 
