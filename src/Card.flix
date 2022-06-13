@@ -1,6 +1,6 @@
 namespace Card {
 
-    pub enum Card(Denomination, Suit)
+    pub enum Card(Suit, Denomination) with ToString, Eq, Order
 
     pub enum Suit with ToString, Eq, Order {
         case Diamond, Club, Heart, Spade
