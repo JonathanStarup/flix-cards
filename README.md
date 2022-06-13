@@ -2,6 +2,10 @@
 
 Playing around with cards in Flix.
 
+# Flix Version
+
+0.28.0
+
 # License
 
 Copyright 2022 Jonathan Lindegaard Starup
