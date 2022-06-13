@@ -6,7 +6,7 @@ namespace Deck {
     use Card.Denomination;
     use Card.Suit;
 
-    type alias Deck = List[Card]
+    pub type alias Deck = List[Card]
 
     pub def freshDeck(): Deck = {
         use Set.flatMap;
