@@ -51,10 +51,36 @@ namespace DeckMonad {
         }
     }
 
+    pub def addCard(c: Card): DeckMonad[Unit, Pure] =
+        DeckMonad(deck -> ((), c :: deck) |> Some)
+
     pub def drawCard(): DeckMonad[Card, Pure] =
         DeckMonad(deck -> match deck {
             case Nil => None
-            case hd :: tl => (hd, tl) |> Some
+            case c :: tl => (c, tl) |> Some
         })
+
+    pub def drawCard2(): DeckMonad[(Card, Card), Pure] =
+        DeckMonad(deck -> match deck {
+            case c1 :: c2 :: tl => ((c1, c2), tl) |> Some
+            case _ => None
+        })
+
+    pub def drawCard3(): DeckMonad[(Card, Card, Card), Pure] =
+        DeckMonad(deck -> match deck {
+            case c1 :: c2 :: c3 :: tl => ((c1, c2, c3), tl) |> Some
+            case _ => None
+        })
+
+    pub def drawCard4(): DeckMonad[(Card, Card, Card, Card), Pure] =
+        DeckMonad(deck -> match deck {
+            case c1 :: c2 :: c3 :: c4 :: tl => ((c1, c2, c3, c4), tl) |> Some
+            case _ => None
+        })
+
+    pub def run(d: Deck, dm: DeckMonad[a, ef]): Option[a] & ef = {
+        let DeckMonad(op) = dm;
+        op(d) |> Option.map(fst)
+    }
 
 }
