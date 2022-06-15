@@ -6,44 +6,21 @@ namespace IdiotSolitaireImp {
 
     type alias Pile = MutDeque[Card, static]
 
-    type alias GameInternal = {deck :: Pile, piles :: Array[Pile]}
+    pub type alias Game = {deck :: Pile, piles :: Array[Pile]}
 
-    pub opaque type Game = GameInternal
+    pub def newGame(seed: Int32): Game & Impure = ??? as & Impure
 
-    /// def getRunState(g: GameInternal): GameRunState & Impure = {
-    ///     if (not MutDeque.isEmpty(g.deck)) Playing else
-    ///     let won = g.piles |> Array.forall(p -> {
-    ///         if (MutDeque.size(p) == 1)
-    ///             ???
-    ///         else false
-    ///     });
-    ///     if (won) Won else Lost
-    /// }
+    pub def getRunState(g: Game): GameRunState.GameRunState & Impure = ??? as & Impure
 
-    def _drawPileCount(g: GameInternal): Int32 & Impure =
+    pub def eliminatePile(i: Int32, g: game): Unit & Impure = ??? as & Impure
+
+    pub def drawCards(g: Game): Unit & Impure = ??? as & Impure
+
+    pub def moveCard(origin: {origin::Int32}, target: Int32, g: Game): Unit & Impure = ??? as & Impure
+
+    pub def drawPileCount(g: Game): Int32 & Impure =
         g.deck |> MutDeque.size
 
-    /// instance IdiotSolitaire.IdiotSolitaire[Game] {
-    
-    ///     pub def getRunState(g: Game): GameRunState = ???
-    
-    ///     pub def eliminatePile(pile: Int32, g: Game): Game = ???
-    
-    ///     pub def drawCards(g: Game): Game = ???
-    
-    ///     pub def setupGame(seed: Int32): Game = ???
-    
-    ///     pub def drawPileCount(g: Game): Int32 & Impure =
-    ///         let Game(gg) = g;
-    ///         drawPileCount(gg)
-    
-    ///     pub def pileString(pile: Int32, g: Game): List[String] = ???
-    
-    ///     pub def moveCard(origin: { origin :: Int32 }, target: Int32, g: Game): Game = ???
-    
-    /// }
-    
-
-
+    pub def pileString(i: Int32, g: Game): Array[String] & Impure = ??? as & Impure
 
 }

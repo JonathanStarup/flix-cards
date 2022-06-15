@@ -82,91 +82,114 @@ namespace Cli {
 
 
     namespace IdiotMenu {
-        use IdiotSolitaire.IdiotSolitaire;
-        use IdiotSolitaire/IdiotSolitaire.{drawCards, drawPileCount, getRunState, eliminatePile, moveCard};
-        use IdiotSolitaire.GameRunState.{Playing, Won, Lost};
+        use IdiotSolitaireImp.{newGame, getRunState, eliminatePile,
+            drawCards, moveCard, drawPileCount, pileString};
+        use IdiotSolitaireImp.Game;
+        use GameRunState.GameRunState.{Playing, Won, Lost};
 
-        pub def playGame(): Unit & Impure = {
-            let game = ???(getSeed());
-            ??? // gameLoop(game)
+        def enterToReturn(): Unit & Impure = {
+            printLine("Enter to return...");
+            let _ = Cli.getInput();
+            ()
         }
 
-        def getSeed(): Int32 & Impure =
+        pub def playGame(): Unit & Impure = {
+            let game = newGame(getSeed());
+            def gameLoop() = {
+                def enterToContinue() = {
+                    printLine("Enter to continue...");
+                    let _ = Cli.getInput();
+                    gameLoop()
+                };
+                def runIfPileOrLoop(f, iStr: String) = {
+                    match Int32.fromString(iStr) {
+                        case Ok(pile) =>
+                            if (1 <= pile and pile <= 4) f(pile)
+                            else gameLoop()
+                        case Err(_) => gameLoop()
+                    }
+                };
+                game |> stateString |> printLine;
+                match getRunState(game) {
+                    case Won =>
+                        let msg = " x x x x x x x " ::
+                                  "x x You Won x x" ::
+                                  " x x x x x x x " :: Nil;
+                        msg |> List.foreach(printLine);
+                        enterToReturn()
+
+                    case Lost =>
+                        "You Lost :(" |> printLine;
+                        enterToReturn()
+                
+                    case Playing =>
+                        match Cli.getInput() {
+                            case None => gameLoop()
+                            case Some(i) => match i {
+                                case "exit" :: Nil => ()
+
+                                case "help" :: Nil =>
+                                    let commandList = "Exit" ::
+                                        "Help" ::
+                                        "Remove <pile>" ::
+                                        "draw" ::
+                                        "move <from> <to>" :: Nil;
+                                    commandList |> List.foreach(printLine);
+                                    enterToContinue()
+
+                                case "remove" :: iStr :: Nil =>
+                                    iStr |> runIfPileOrLoop(pile -> {
+                                        eliminatePile(pile, game);
+                                        gameLoop()
+                                    })
+
+                                case "draw" :: Nil =>
+                                    drawCards(game);
+                                    gameLoop()
+                                
+                                case "move" :: fromStr :: toStr :: Nil =>
+                                    fromStr |> runIfPileOrLoop(fromPile ->
+                                        (toStr |> runIfPileOrLoop(toPile -> {
+                                            moveCard(origin = fromPile, toPile, game);
+                                            gameLoop()
+                                        }))
+                                    )
+
+                                case _ => gameLoop()
+                            }
+                        }
+                }
+            };
+            gameLoop()
+        }
+
+        def getSeed(): Int32 & Impure = {
             let seedMod = Time/Epoch.seconds() mod Int32.toInt64(Int32.maxValue());
             let seedOpt = Int64.tryToInt32(seedMod);
             match seedOpt {
                 case None => ?unreachable
                 case Some(v) => v
             }
+        }
         
-        def stateString(g: game): String with IdiotSolitaire[game] = {
-            let drawcount = g |> drawPileCount;
-            ???
+        def stateString(g: Game): String & Impure = {
+            use Int32.max;
+            use Array.length;
+            let drawCount = drawPileCount(g);
+            let deckLine = "Deck: ${drawCount}";
+            let pile1 = pileString(1, g);
+            let pile2 = pileString(2, g);
+            let pile3 = pileString(3, g);
+            let pile4 = pileString(4, g);
+            let maxHeight = length(pile1) `max` length(pile2) `max` length(pile3) `max` length(pile4);
+            let cardPiles = List.range(0, maxHeight) |> List.map(i -> {
+                def ps(p) = p |> arrayGetOpt(i) |> toString |> String.padLeft(4, ' ');
+                "${ps(pile1)} ${ps(pile2)} ${ps(pile3)} ${ps(pile4)}"
+            });
+            (deckLine :: cardPiles) |> String.intercalate(String.lineSeparator())
         }
 
-        pub def gameLoop(g: game): Unit & Impure with IdiotSolitaire[game] = {
-            g |> stateString |> printLine;
-            def enterToReturn() = {
-                printLine("Enter to return...");
-                let _ = Cli.getInput();
-                ()
-            };
-            def enterToContinue() = {
-                printLine("Enter to continue...");
-                let _ = Cli.getInput();
-                gameLoop(g)
-            };
-            def runIfPileOrLoop(f, iStr: String) =
-                match Int32.fromString(iStr) {
-                    case Ok(pile) =>
-                        if (1 <= pile and pile <= 4) f(pile)
-                        else gameLoop(g)
-                    case Err(_) => gameLoop(g)
-                };
-            match getRunState(g) {
-                case Won =>
-                    let msg = " x x x x x x x " ::
-                              "x x You Won x x" ::
-                              " x x x x x x x " :: Nil;
-                    msg |> List.foreach(printLine);
-                    enterToReturn()
-
-                case Lost =>
-                    "You Lost :(" |> printLine;
-                    enterToReturn()
-                
-                case Playing =>
-                    match Cli.getInput() {
-                        case None => gameLoop(g)
-                        case Some(i) => match i {
-                            case "exit" :: Nil => ()
-
-                            case "help" :: Nil =>
-                                let commandList = "Exit" ::
-                                    "Help" ::
-                                    "Remove <pile>" ::
-                                    "draw" ::
-                                    "move <from> <to>" :: Nil;
-                                commandList |> List.foreach(printLine);
-                                enterToContinue()
-
-                            case "remove" :: iStr :: Nil =>
-                                runIfPileOrLoop(pile -> eliminatePile(pile, g) |> gameLoop, iStr)
-
-                            case "draw" :: Nil =>
-                                g |> drawCards |> gameLoop
-                            
-                            case "move" :: fromStr :: toStr :: Nil =>
-                                fromStr |> runIfPileOrLoop(fromPile ->
-                                    toStr |> runIfPileOrLoop(toPile ->
-                                        moveCard(origin = fromPile, toPile, g) |> gameLoop
-                                    )
-                                )
-
-                            case _ => gameLoop(g)
-                        }
-                    }
-            }
-        }
+        def arrayGetOpt(i: Int32, a: Array[a]): Option[a] & Impure =
+            if (0 <= i and i < a.length) Some(a[i]) else None
     }   
 }
