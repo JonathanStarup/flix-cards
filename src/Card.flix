@@ -1,6 +1,6 @@
 namespace Card {
 
-    pub enum Card(Suit, Denomination) with ToString, Eq, Order
+    pub opaque type Card with ToString, Eq, Order = (Suit, Denomination)
 
     pub enum Suit with ToString, Eq, Order {
         case Diamond, Club, Heart, Spade
