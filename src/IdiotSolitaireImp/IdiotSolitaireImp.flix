@@ -58,7 +58,7 @@ namespace IdiotSolitaireImp {
         if (MutDeque.isEmpty(g.deck)) {
             let won = g.piles |> Array.map(p -> {
                 match MutDeque.popFront(p) {
-                    case None => ?emptyPileEnding
+                    case None => false
                     case Some(top) => {
                         MutDeque.pushFront(top, p);
                         MutDeque.size(p) == 1 and top.den == 13
@@ -69,10 +69,13 @@ namespace IdiotSolitaireImp {
         } else Playing
     }
 
-    pub def eliminatePile(i: Int32, g: Game): Unit & Impure = {
+    ///
+    /// Returns `true` if successful.
+    ///
+    pub def eliminatePile(i: Int32, g: Game): Bool & Impure = {
         let index = i-1;
         let targetPile = (g.piles)[index];
-        if (MutDeque.isEmpty(targetPile)) () else
+        if (MutDeque.isEmpty(targetPile)) false else
         let target = match MutDeque.peekFront(targetPile) {
             case None => ?unreachable
             case Some(t) => t
@@ -85,10 +88,10 @@ namespace IdiotSolitaireImp {
                     front.suit == target.suit and front.den > target.den
             }
         }) |> List.exists(identity);
-        if (valid) {MutDeque.popFront(targetPile); ()} else ()
+        if (valid) {MutDeque.popFront(targetPile); true} else false
     }
 
-    pub def drawCards(g: Game): Unit & Impure = {
+    pub def drawCards(g: Game): Bool & Impure = {
         use Option.flatMap;
         {
             let* c1 = MutDeque.popFront(g.deck);
@@ -99,9 +102,8 @@ namespace IdiotSolitaireImp {
             (g.piles)[1] |> MutDeque.pushFront(c2);
             (g.piles)[2] |> MutDeque.pushFront(c3);
             (g.piles)[3] |> MutDeque.pushFront(c4);
-            None
-        };
-        ()
+            Some(true)
+        } |> Option.getWithDefault(false)
     }
 
     pub def moveCard(origin: {origin::Int32}, target: Int32, g: Game): Unit & Impure = {
@@ -123,6 +125,39 @@ namespace IdiotSolitaireImp {
                 List.toArray |>
                 Array.map(cardString)
         else []
+    }
+
+    def pause(millis: Int64): Unit & Impure = {
+        import static java.lang.Thread.sleep(Int64): Unit & Impure;
+        if (millis <= 0i64) () else sleep(millis)
+    }
+
+    pub def autoSolve(speed: Int64, render: Unit -> Unit & ef, g: Game): Unit & Impure = {
+        def renderAndPause(b) = if (b) {render(); pause(speed)} else ();
+        let change = ref false;
+        def elimLoop() = {
+            change := false;
+            Iterator.range(1, 5) |> Iterator.foreach(p -> {
+                let b = eliminatePile(p, g);
+                renderAndPause(b);
+                change := deref change or b
+            });
+            if (deref change) elimLoop() else ()
+        };
+        elimLoop();
+        if (moveChoicePresent(g)) () else
+        let b = drawCards(g);
+        if (b) {
+            renderAndPause(b);
+            autoSolve(speed, render, g)
+        } else ()
+    }
+
+    def moveChoicePresent(g: Game): Bool & Impure = {
+        let sizes = g.piles |> Array.map(MutDeque.size);
+        let cardAvailable = Array.exists(size -> size >= 2, sizes);
+        let someEmpty = Array.exists(Eq.eq(0), sizes);
+        cardAvailable and someEmpty 
     }
 
 }

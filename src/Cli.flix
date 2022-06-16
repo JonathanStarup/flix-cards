@@ -109,7 +109,7 @@ namespace Cli {
 
 
     namespace IdiotMenu {
-        use IdiotSolitaireImp.{newGame, getRunState, eliminatePile,
+        use IdiotSolitaireImp.{newGame, getRunState, eliminatePile, autoSolve,
             drawCards, moveCard, drawPileCount, pileString};
         use IdiotSolitaireImp.Game;
         use GameRunState.GameRunState.{Playing, Won, Lost};
@@ -153,18 +153,26 @@ namespace Cli {
                                         "Help" ::
                                         "Remove <pile>" ::
                                         "draw" ::
+                                        "auto" ::
                                         "move <from> <to>" :: Nil;
                                     commandList |> List.foreach(printLine);
                                     enterToContinue()
 
                                 case "remove" :: iStr :: Nil =>
                                     iStr |> runIfPileOrLoop(pile -> {
-                                        eliminatePile(pile, game)
+                                        discard eliminatePile(pile, game)
                                     });
                                     gameLoop()
 
                                 case "draw" :: Nil =>
                                     drawCards(game);
+                                    gameLoop()
+
+                                case "auto" :: Nil =>
+                                    autoSolve(250i64, _ -> {
+                                        clearScreen();
+                                        game |> stateString |> printLine
+                                    }, game);
                                     gameLoop()
                                 
                                 case "move" :: fromStr :: toStr :: Nil =>
@@ -177,7 +185,7 @@ namespace Cli {
 
                                 case iStr :: Nil =>
                                     iStr |> runIfPileOrLoop(pile -> {
-                                        eliminatePile(pile, game)
+                                        discard eliminatePile(pile, game)
                                     });
                                     gameLoop()
 
