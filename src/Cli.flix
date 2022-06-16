@@ -128,7 +128,7 @@ namespace Cli {
                             case Some(i) => match i {
                                 case "exit" :: Nil => ()
 
-                                case "help" :: Nil =>
+                                case "help" :: Nil  =>
                                     let commandList = "Exit" ::
                                         "Help" ::
                                         "Remove <pile>" ::
@@ -148,6 +148,20 @@ namespace Cli {
                                     gameLoop()
                                 
                                 case "move" :: fromStr :: toStr :: Nil =>
+                                    fromStr |> runIfPileOrLoop(fromPile ->
+                                        (toStr |> runIfPileOrLoop(toPile -> {
+                                            moveCard(origin = fromPile, toPile, game);
+                                            gameLoop()
+                                        }))
+                                    )
+
+                                case iStr :: Nil =>
+                                    iStr |> runIfPileOrLoop(pile -> {
+                                        eliminatePile(pile, game);
+                                        gameLoop()
+                                    })
+
+                                case fromStr :: toStr :: Nil =>
                                     fromStr |> runIfPileOrLoop(fromPile ->
                                         (toStr |> runIfPileOrLoop(toPile -> {
                                             moveCard(origin = fromPile, toPile, game);
@@ -183,7 +197,7 @@ namespace Cli {
             let pile4 = pileString(4, g);
             let maxHeight = length(pile1) `max` length(pile2) `max` length(pile3) `max` length(pile4);
             let cardPiles = List.range(0, maxHeight) |> List.map(i -> {
-                def ps(p) = p |> arrayGetOpt(i) |> toString |> String.padLeft(4, ' ');
+                def ps(p) = p |> arrayGetOpt(i) |> Option.getWithDefault("   ") |> toString;
                 "${ps(pile1)} ${ps(pile2)} ${ps(pile3)} ${ps(pile4)}"
             });
             (deckLine :: cardPiles) |> String.intercalate(String.lineSeparator())
