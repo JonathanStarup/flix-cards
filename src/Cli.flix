@@ -1,21 +1,47 @@
 /// Command-line interface
 namespace Cli {
-    use Console.{print, printLine, flush};
     use ToString.toString;
 
+    def print(x: s): Unit & Impure with ToString[s] = {
+        Console.print(x);
+        Console.flush()
+    }
+
+    def printLine(x: s): Unit & Impure with ToString[s] = Console.printLine(x)
+
+    def readLine(): Option[String] & Impure = Console.readLine()
+
+    def escape(s: String): String = "\u001B${s}"
+
+    def csi(s: String): String = escape("[${s}")
+
+    def clearScreen(): Unit & Impure =
+        csi("2J") |> print;
+        csi("${1};${1}H") |> print
+
+    def enterToContinue(): Unit & Impure = {
+        printLine("Enter to continue...");
+        let _ = Cli.getInput();
+       ()
+    }
+
     pub def main(): Unit & Impure = {
+        clearScreen();
         "flix-cards ~ ~ ~ ~ ~" |> Console.bold |> printLine;
+        "You interact by ..." |> printLine;
+        enterToContinue();
         startMenuLoop()
     }
 
     def getInput(): Option[List[String]] & Impure = {
-        print("> "); flush();
-        Console.readLine() |>
+        print("> ");
+        readLine() |>
             Option.map(String.toLowerCase) |>
             Option.map(String.words)
     }
 
     def startMenuLoop(): Unit & Impure = {
+        clearScreen();
         allStartMenuItems() |> showStartMenuItems |> printLine;
         let parsedInput = getInput() |> Option.flatMap(stringToStartMenuItem);
         match parsedInput {
@@ -68,6 +94,7 @@ namespace Cli {
             String.intercalate(" - ")
 
     def playMenuLoop(): Unit & Impure = {
+        clearScreen();
         allPlayMenuItems() |> showPlayMenuItems |> printLine;
         let parsedInput = getInput() |> Option.flatMap(stringToPlayMenuItem);
         match parsedInput {
@@ -86,29 +113,21 @@ namespace Cli {
             drawCards, moveCard, drawPileCount, pileString};
         use IdiotSolitaireImp.Game;
         use GameRunState.GameRunState.{Playing, Won, Lost};
+        use Cli.{getInput, print, printLine, clearScreen, enterToContinue};
 
-        def enterToReturn(): Unit & Impure = {
-            printLine("Enter to return...");
-            let _ = Cli.getInput();
-            ()
+        def runIfPileOrLoop(f: Int32 -> Unit & ef, s: String): Unit & ef = {
+            match Int32.fromString(s) {
+                case Ok(pile) =>
+                    if (1 <= pile and pile <= 4) f(pile)
+                    else ()
+                case Err(_) =>()
+            }
         }
 
         pub def playGame(): Unit & Impure = {
             let game = newGame(getSeed());
             def gameLoop() = {
-                def enterToContinue() = {
-                    printLine("Enter to continue...");
-                    let _ = Cli.getInput();
-                    gameLoop()
-                };
-                def runIfPileOrLoop(f, iStr: String) = {
-                    match Int32.fromString(iStr) {
-                        case Ok(pile) =>
-                            if (1 <= pile and pile <= 4) f(pile)
-                            else gameLoop()
-                        case Err(_) => gameLoop()
-                    }
-                };
+                clearScreen();
                 game |> stateString |> printLine;
                 match getRunState(game) {
                     case Won =>
@@ -116,19 +135,20 @@ namespace Cli {
                                   "x x You Won x x" ::
                                   " x x x x x x x " :: Nil;
                         msg |> List.foreach(printLine);
-                        enterToReturn()
+                        enterToContinue()
 
                     case Lost =>
                         "You Lost :(" |> printLine;
-                        enterToReturn()
+                        enterToContinue()
                 
                     case Playing =>
-                        match Cli.getInput() {
+                        match getInput() {
                             case None => gameLoop()
                             case Some(i) => match i {
                                 case "exit" :: Nil => ()
 
                                 case "help" :: Nil  =>
+                                    clearScreen();
                                     let commandList = "Exit" ::
                                         "Help" ::
                                         "Remove <pile>" ::
@@ -139,9 +159,9 @@ namespace Cli {
 
                                 case "remove" :: iStr :: Nil =>
                                     iStr |> runIfPileOrLoop(pile -> {
-                                        eliminatePile(pile, game);
-                                        gameLoop()
-                                    })
+                                        eliminatePile(pile, game)
+                                    });
+                                    gameLoop()
 
                                 case "draw" :: Nil =>
                                     drawCards(game);
@@ -150,24 +170,24 @@ namespace Cli {
                                 case "move" :: fromStr :: toStr :: Nil =>
                                     fromStr |> runIfPileOrLoop(fromPile ->
                                         (toStr |> runIfPileOrLoop(toPile -> {
-                                            moveCard(origin = fromPile, toPile, game);
-                                            gameLoop()
+                                            moveCard(origin = fromPile, toPile, game)
                                         }))
-                                    )
+                                    );
+                                    gameLoop()
 
                                 case iStr :: Nil =>
                                     iStr |> runIfPileOrLoop(pile -> {
-                                        eliminatePile(pile, game);
-                                        gameLoop()
-                                    })
+                                        eliminatePile(pile, game)
+                                    });
+                                    gameLoop()
 
                                 case fromStr :: toStr :: Nil =>
                                     fromStr |> runIfPileOrLoop(fromPile ->
                                         (toStr |> runIfPileOrLoop(toPile -> {
-                                            moveCard(origin = fromPile, toPile, game);
-                                            gameLoop()
+                                            moveCard(origin = fromPile, toPile, game)
                                         }))
-                                    )
+                                    );
+                                    gameLoop()
 
                                 case _ => gameLoop()
                             }
@@ -205,5 +225,5 @@ namespace Cli {
 
         def arrayGetOpt(i: Int32, a: Array[a]): Option[a] & Impure =
             if (0 <= i and i < a.length) Some(a[i]) else None
-    }   
+    }
 }
