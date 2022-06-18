@@ -145,19 +145,52 @@ namespace IdiotSolitaireImp {
             if (deref change) elimLoop() else ()
         };
         elimLoop();
-        if (moveChoicePresent(g)) () else
-        let b = drawCards(g);
-        if (b) {
-            renderAndPause(b);
-            autoSolve(speed, render, g)
-        } else ()
+        match findMoves(g) {
+            case Err() => ()
+            case Ok(moves) =>
+                // make moves
+                if (List.length(moves) > 0) {
+                    moves |> List.foreach(match (origin, target) -> {
+                        moveCard(origin = origin, target, g);
+                        renderAndPause(true)
+                    });
+                    autoSolve(speed, render, g)
+                } else {
+                    // draw cards
+                    let cardsDrawn = drawCards(g);
+                    if (cardsDrawn) {
+                        renderAndPause(true);
+                        autoSolve(speed, render, g)
+                    } else ()
+                }
+        }
     }
 
-    def moveChoicePresent(g: Game): Bool & Impure = {
-        let sizes = g.piles |> Array.map(MutDeque.size);
-        let cardAvailable = Array.exists(size -> size >= 2, sizes);
-        let someEmpty = Array.exists(Eq.eq(0), sizes);
-        cardAvailable and someEmpty 
+    /// Returns None if a non-trivial move is needed, otherwise a sequence of moves.
+    def findMoves(g: Game): Result[List[(Int32, Int32)], Unit] & Impure = {
+        use Array.{length, map, findIndices, sum, toList};
+        use List.{zip, flatMap, repeat, range};
+
+        let sizes = g.piles |> map(MutDeque.size);
+        let emptyPiles = sizes |> findIndices(Eq.eq(0)) |> map(i -> i+1);
+        if (length(emptyPiles) == 0) Ok(Nil) else
+
+        let pilesToMoveFrom = sizes |> findIndices(size -> size >= 2) |> map(i -> i+1);
+        let movableCards = sizes |> map(size -> Int32.max(0, size-1));
+        let numberOfMovableCards =  movableCards |> sum;
+        if (numberOfMovableCards == 0) Ok(Nil) else
+        if (numberOfMovableCards <= length(emptyPiles)) {
+            // find the piles with
+            let origins = range(0, 4) |> flatMap(i -> repeat(movableCards[i], i+1));
+            let targets = emptyPiles |> toList;
+            // targets is the longest list so zip removing elements is fine
+            zip(origins, targets) |> Ok
+        } else if (length(pilesToMoveFrom) == 1) {
+            let cardsToMove = Int32.min(numberOfMovableCards, length(emptyPiles));
+            let origins = repeat(cardsToMove, pilesToMoveFrom[0]);
+            let targets = emptyPiles |> toList;
+            zip(origins, targets) |> Ok
+        } else Err()
     }
 
 }

@@ -184,7 +184,7 @@ namespace Cli {
                     false
 
                 case "auto" :: Nil =>
-                    autoSolve(250i64, _ -> {
+                    autoSolve(100i64, _ -> {
                         clearScreen();
                         game |> stateString |> printLine
                     }, game);
