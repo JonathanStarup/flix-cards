@@ -129,81 +129,93 @@ namespace Cli {
             def gameLoop() = {
                 clearScreen();
                 game |> stateString |> printLine;
-                match getRunState(game) {
-                    case Won =>
-                        let msg = " x x x x x x x " ::
-                                  "x x You Won x x" ::
-                                  " x x x x x x x " :: Nil;
-                        msg |> List.foreach(printLine);
-                        enterToContinue()
-
-                    case Lost =>
-                        "You Lost :(" |> printLine;
-                        enterToContinue()
-                
-                    case Playing =>
-                        match getInput() {
-                            case None => gameLoop()
-                            case Some(i) => match i {
-                                case "exit" :: Nil => ()
-
-                                case "help" :: Nil  =>
-                                    clearScreen();
-                                    let commandList = "Exit" ::
-                                        "Help" ::
-                                        "Remove <pile>" ::
-                                        "draw" ::
-                                        "auto" ::
-                                        "move <from> <to>" :: Nil;
-                                    commandList |> List.foreach(printLine);
-                                    enterToContinue()
-
-                                case "remove" :: iStr :: Nil =>
-                                    iStr |> runIfPileOrLoop(pile -> {
-                                        discard eliminatePile(pile, game)
-                                    });
-                                    gameLoop()
-
-                                case "draw" :: Nil =>
-                                    drawCards(game);
-                                    gameLoop()
-
-                                case "auto" :: Nil =>
-                                    autoSolve(250i64, _ -> {
-                                        clearScreen();
-                                        game |> stateString |> printLine
-                                    }, game);
-                                    gameLoop()
-                                
-                                case "move" :: fromStr :: toStr :: Nil =>
-                                    fromStr |> runIfPileOrLoop(fromPile ->
-                                        (toStr |> runIfPileOrLoop(toPile -> {
-                                            moveCard(origin = fromPile, toPile, game)
-                                        }))
-                                    );
-                                    gameLoop()
-
-                                case iStr :: Nil =>
-                                    iStr |> runIfPileOrLoop(pile -> {
-                                        discard eliminatePile(pile, game)
-                                    });
-                                    gameLoop()
-
-                                case fromStr :: toStr :: Nil =>
-                                    fromStr |> runIfPileOrLoop(fromPile ->
-                                        (toStr |> runIfPileOrLoop(toPile -> {
-                                            moveCard(origin = fromPile, toPile, game)
-                                        }))
-                                    );
-                                    gameLoop()
-
-                                case _ => gameLoop()
-                            }
-                        }
-                }
+                if (not gameEnded(game)) {
+                    let gameExit = receiveCommand(game);
+                    if (not gameExit) gameLoop() else ()
+                } else ()
             };
             gameLoop()
         }
+
+        def gameEnded(game: Game): Bool & Impure = match getRunState(game) {
+            case Won =>
+                let msg = " x x x x x x x " ::
+                            "x x You Won x x" ::
+                            " x x x x x x x " :: Nil;
+                msg |> List.foreach(printLine);
+                enterToContinue();
+                true
+
+            case Lost =>
+                "You Lost :(" |> printLine;
+                enterToContinue();
+                true
+        
+            case Playing =>
+                false
+        }
+
+        /// Returns true if the game should end
+        def receiveCommand(game: Game): Bool & Impure = match getInput() {
+            case None => false
+            case Some(i) => match i {
+                case "exit" :: Nil => true
+
+                case "help" :: Nil  =>
+                    clearScreen();
+                    let commandList = "Exit" ::
+                        "Help" ::
+                        "Remove <pile>" ::
+                        "draw" ::
+                        "auto" ::
+                        "move <from> <to>" :: Nil;
+                    commandList |> List.foreach(printLine);
+                    enterToContinue();
+                    false
+
+                case "remove" :: iStr :: Nil =>
+                    iStr |> runIfPileOrLoop(pile -> {
+                        discard eliminatePile(pile, game)
+                    });
+                    false
+
+                case "draw" :: Nil =>
+                    drawCards(game);
+                    false
+
+                case "auto" :: Nil =>
+                    autoSolve(250i64, _ -> {
+                        clearScreen();
+                        game |> stateString |> printLine
+                    }, game);
+                    false
+                
+                case "move" :: fromStr :: toStr :: Nil =>
+                    fromStr |> runIfPileOrLoop(fromPile ->
+                        (toStr |> runIfPileOrLoop(toPile -> {
+                            moveCard(origin = fromPile, toPile, game)
+                        }))
+                    );
+                    false
+
+                case iStr :: Nil =>
+                    iStr |> runIfPileOrLoop(pile -> {
+                        discard eliminatePile(pile, game)
+                    });
+                    false
+
+                case fromStr :: toStr :: Nil =>
+                    fromStr |> runIfPileOrLoop(fromPile ->
+                        (toStr |> runIfPileOrLoop(toPile -> {
+                            moveCard(origin = fromPile, toPile, game)
+                        }))
+                    );
+                    false
+
+                case _ => false
+            }
+        }
+
 
         def getSeed(): Int32 & Impure = {
             let seedMod = Time/Epoch.seconds() mod Int32.toInt64(Int32.maxValue());
