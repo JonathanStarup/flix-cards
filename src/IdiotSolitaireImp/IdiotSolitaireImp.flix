@@ -23,24 +23,24 @@ namespace IdiotSolitaireImp {
         case _  => ?wrongDenInt
     } |> String.padLeft(2, ' ')
 
-    type alias Pile = MutDeque[Card, static]
+    type alias Pile = MutDeque[Card, Static]
 
-    pub type alias Game = {deck :: Pile, piles :: Array[Pile]}
+    pub type alias Game = {deck :: Pile, piles :: Array[Pile, Static]}
 
     pub def newGame(seed: Int32): Game & Impure = {
         let rand = Random.newWithSeed(seed |> Int32.toInt64);
-        let allCards = Iterator.range(1, 5) |> Iterator.flatMap(suit -> {
-                Iterator.range(1, 14) |> Iterator.mapL(den -> {suit = suit, den = den})
+        let allCards = Iterator.range(Static, 1, 5) |> Iterator.flatMap(suit -> {
+                Iterator.range(Static, 1, 14) |> Iterator.mapL(den -> {suit = suit, den = den})
             }) |> 
-            Iterator.toArray;
+            Iterator.toArray(Static);
         shuffle(rand, allCards);
-        def newMd() = MutDeque.new(static);
+        def newMd() = MutDeque.new(Static);
         let md = newMd();
         allCards |> Array.foreach(c -> MutDeque.pushFront(c, md));
         {deck = md, piles = [newMd(), newMd(), newMd(), newMd()]}
     }
 
-    def shuffle(r: Random.Random, a: Array[a]): Unit & Impure =
+    def shuffle(r: Random.Random, a: Array[a, Static]): Unit & Impure =
         let len = Array.length(a);
         def loop(i) = {
             if (i > 0) {
@@ -80,7 +80,7 @@ namespace IdiotSolitaireImp {
             case None => ?unreachable
             case Some(t) => t
         };
-        let valid = Iterator.range(0, 4) |> Iterator.map(p -> {
+        let valid = Iterator.range(Static, 0, 4) |> Iterator.map(p -> {
             if (p == index) false else
             match MutDeque.peekFront((g.piles)[p]) {
                 case None => false
@@ -117,12 +117,12 @@ namespace IdiotSolitaireImp {
     pub def drawPileCount(g: Game): Int32 & Impure =
         g.deck |> MutDeque.size
 
-    pub def pileString(i: Int32, g: Game): Array[String] & Impure = {
+    pub def pileString(i: Int32, g: Game): Array[String, Static] & Impure = {
         if (1 <= i and i <= 4)
             ((g.piles)[i-1]) |>
                 MutDeque.toList |>
                 List.reverse |>
-                List.toArray |>
+                (l -> List.toArray(l, Static)) |>
                 Array.map(cardString)
         else []
     }
@@ -137,7 +137,7 @@ namespace IdiotSolitaireImp {
         let change = ref false;
         def elimLoop() = {
             change := false;
-            Iterator.range(1, 5) |> Iterator.foreach(p -> {
+            Iterator.range(Static, 1, 5) |> Iterator.foreach(p -> {
                 let b = eliminatePile(p, g);
                 renderAndPause(b);
                 change := deref change or b

@@ -4,7 +4,7 @@ Playing around with cards in Flix.
 
 # Flix Version
 
-0.28.0
+0.29.0
 
 # License
 

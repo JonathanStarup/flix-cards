@@ -243,7 +243,7 @@ namespace Cli {
             (deckLine :: cardPiles) |> String.intercalate(String.lineSeparator())
         }
 
-        def arrayGetOpt(i: Int32, a: Array[a]): Option[a] & Impure =
+        def arrayGetOpt(i: Int32, a: Array[a, Static]): Option[a] & Impure =
             if (0 <= i and i < a.length) Some(a[i]) else None
     }
 }
