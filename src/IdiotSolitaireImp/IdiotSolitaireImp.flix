@@ -39,26 +39,12 @@ namespace IdiotSolitaireImp {
         let allCards = Iterator.range(r, 1, 5) |> Iterator.flatMap(suit -> {
                 Iterator.range(r, 1, 14) |> Iterator.mapL(den -> {suit = suit, den = den})
             }) |> Iterator.toArray(r);
-        shuffle(rand, allCards);
+        Array.shuffle(rand, allCards);
         def newMd() = MutDeque.new(r);
         let md = newMd();
         allCards |> Array.foreach(c -> MutDeque.pushFront(c, md));
         Game({deck = md, piles = [newMd(), newMd(), newMd(), newMd()] @ r, reg = r})
     }
-
-    def shuffle(r: Random.Random, a: Array[a, r]): Unit & Impure =
-        let len = Array.length(a);
-        def loop(i) = {
-            if (i > 0) {
-                let j = Random.nextNatWithMax(r, i + 1);
-                let ai = a[i];
-                let aj = a[j];
-                a[i] = aj;
-                a[j] = ai;
-                loop(i - 1)
-            } else ()
-        };
-        loop(len - 1)
 
     pub def getRunState(g: Game[r]): GameRunState.GameRunState & r = {
         if (MutDeque.isEmpty(g.deck)) {
