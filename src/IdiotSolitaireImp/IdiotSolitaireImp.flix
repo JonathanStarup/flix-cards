@@ -23,24 +23,30 @@ namespace IdiotSolitaireImp {
         case _  => ?wrongDenInt
     } |> String.padLeft(2, ' ')
 
-    type alias Pile = MutDeque[Card, Static]
+    type alias Pile[r: Region] = MutDeque[Card, r]
 
-    pub type alias Game = {deck :: Pile, piles :: Array[Pile, Static]}
+    pub enum Game[r: Region]({deck :: Pile[r], piles :: Array[Pile[r], r], reg :: Region[r]})
 
-    pub def newGame(seed: Int32): Game & Impure = {
+    instance Scoped[Game] {
+        pub def regionOf(x: Game[r]): Region[r] =
+            let Game(r) = x;
+            r.reg
+    }
+    
+
+    pub def newGame(r: Region[r], seed: Int32): Game[r] & Impure = {
         let rand = Random.newWithSeed(seed |> Int32.toInt64);
-        let allCards = Iterator.range(Static, 1, 5) |> Iterator.flatMap(suit -> {
-                Iterator.range(Static, 1, 14) |> Iterator.mapL(den -> {suit = suit, den = den})
-            }) |> 
-            Iterator.toArray(Static);
+        let allCards = Iterator.range(r, 1, 5) |> Iterator.flatMap(suit -> {
+                Iterator.range(r, 1, 14) |> Iterator.mapL(den -> {suit = suit, den = den})
+            }) |> Iterator.toArray(r);
         shuffle(rand, allCards);
-        def newMd() = MutDeque.new(Static);
+        def newMd() = MutDeque.new(r);
         let md = newMd();
         allCards |> Array.foreach(c -> MutDeque.pushFront(c, md));
-        {deck = md, piles = [newMd(), newMd(), newMd(), newMd()]}
+        Game({deck = md, piles = [newMd(), newMd(), newMd(), newMd()] @ r, reg = r})
     }
 
-    def shuffle(r: Random.Random, a: Array[a, Static]): Unit & Impure =
+    def shuffle(r: Random.Random, a: Array[a, r]): Unit & Impure =
         let len = Array.length(a);
         def loop(i) = {
             if (i > 0) {
@@ -54,7 +60,7 @@ namespace IdiotSolitaireImp {
         };
         loop(len - 1)
 
-    pub def getRunState(g: Game): GameRunState.GameRunState & Impure = {
+    pub def getRunState(g: Game[r]): GameRunState.GameRunState & r = {
         if (MutDeque.isEmpty(g.deck)) {
             let won = g.piles |> Array.map(p -> {
                 match MutDeque.popFront(p) {
@@ -72,7 +78,8 @@ namespace IdiotSolitaireImp {
     ///
     /// Returns `true` if successful.
     ///
-    pub def eliminatePile(i: Int32, g: Game): Bool & Impure = {
+    pub def eliminatePile(i: Int32, game: Game[r]): Bool & r = {
+        let Game(g) = game;
         let index = i-1;
         let targetPile = (g.piles)[index];
         if (MutDeque.isEmpty(targetPile)) false else
@@ -80,19 +87,22 @@ namespace IdiotSolitaireImp {
             case None => ?unreachable
             case Some(t) => t
         };
-        let valid = Iterator.range(Static, 0, 4) |> Iterator.map(p -> {
-            if (p == index) false else
-            match MutDeque.peekFront((g.piles)[p]) {
-                case None => false
-                case Some(front) =>
-                    front.suit == target.suit and front.den > target.den
-            }
-        }) |> List.exists(identity);
+        let valid = region rr { 
+            Iterator.range(rr, 0, 4) |> Iterator.map(p -> {
+                if (p == index) false else
+                match MutDeque.peekFront((g.piles)[p]) {
+                    case None => false
+                    case Some(front) =>
+                        front.suit == target.suit and front.den > target.den
+                }
+            }) |> List.exists(identity)
+        };
         if (valid) {MutDeque.popFront(targetPile); true} else false
     }
 
-    pub def drawCards(g: Game): Bool & Impure = {
+    pub def drawCards(game: Game[r]): Bool & r = {
         use Option.flatMap;
+        let Game(g) = game;
         {
             let* c1 = MutDeque.popFront(g.deck);
             let* c2 = MutDeque.popFront(g.deck);
@@ -106,7 +116,8 @@ namespace IdiotSolitaireImp {
         } |> Option.getWithDefault(false)
     }
 
-    pub def moveCard(origin: {origin::Int32}, target: Int32, g: Game): Unit & Impure = {
+    pub def moveCard(origin: {origin::Int32}, target: Int32, game: Game[r]): Unit & r = {
+        let Game(g) = game;
         if (not MutDeque.isEmpty((g.piles)[target-1])) () else
         match MutDeque.popFront((g.piles)[origin.origin-1]) {
             case None => ()
@@ -114,15 +125,17 @@ namespace IdiotSolitaireImp {
         }
     }
 
-    pub def drawPileCount(g: Game): Int32 & Impure =
+    pub def drawPileCount(game: Game[r]): Int32 & r =
+        let Game(g) = game;
         g.deck |> MutDeque.size
 
-    pub def pileString(i: Int32, g: Game): Array[String, Static] & Impure = {
+    pub def pileString(i: Int32, game: Game[r]): Array[String, r] & r = {
+        let Game(g) = game;
         if (1 <= i and i <= 4)
             ((g.piles)[i-1]) |>
                 MutDeque.toList |>
                 List.reverse |>
-                (l -> List.toArray(l, Static)) |>
+                (l -> List.toArray(l, Scoped.regionOf(g))) |>
                 Array.map(cardString)
         else []
     }
@@ -132,12 +145,12 @@ namespace IdiotSolitaireImp {
         if (millis <= 0i64) () else sleep(millis)
     }
 
-    pub def autoSolve(speed: Int64, render: Unit -> Unit & ef, g: Game): Unit & Impure = {
+    pub def autoSolve(speed: Int64, render: Unit -> Unit & ef, g: Game[r]): Unit & Impure = {
         def renderAndPause(b) = if (b) {render(); pause(speed)} else ();
         let change = ref false;
         def elimLoop() = {
             change := false;
-            Iterator.range(Static, 1, 5) |> Iterator.foreach(p -> {
+            Iterator.range(Scoped.regionOf(g), 1, 5) |> Iterator.foreach(p -> {
                 let b = eliminatePile(p, g);
                 renderAndPause(b);
                 change := deref change or b
@@ -167,7 +180,7 @@ namespace IdiotSolitaireImp {
     }
 
     /// Returns None if a non-trivial move is needed, otherwise a sequence of moves.
-    def findMoves(g: Game): Result[List[(Int32, Int32)], Unit] & Impure = {
+    def findMoves(g: Game[r]): Result[List[(Int32, Int32)], Unit] & r = {
         use Array.{length, map, findIndices, sum, toList};
         use List.{zip, flatMap, repeat, range};
 

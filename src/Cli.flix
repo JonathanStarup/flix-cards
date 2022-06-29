@@ -125,7 +125,7 @@ namespace Cli {
         }
 
         pub def playGame(): Unit & Impure = {
-            let game = newGame(getSeed());
+            let game = newGame(Static, getSeed());
             def gameLoop() = {
                 clearScreen();
                 game |> stateString |> printLine;
@@ -137,7 +137,7 @@ namespace Cli {
             gameLoop()
         }
 
-        def gameEnded(game: Game): Bool & Impure = match getRunState(game) {
+        def gameEnded(game: Game[r]): Bool & Impure = match getRunState(game) {
             case Won =>
                 let msg = " x x x x x x x " ::
                             "x x You Won x x" ::
@@ -156,7 +156,7 @@ namespace Cli {
         }
 
         /// Returns true if the game should end
-        def receiveCommand(game: Game): Bool & Impure = match getInput() {
+        def receiveCommand(game: Game[r]): Bool & Impure = match getInput() {
             case None => false
             case Some(i) => match i {
                 case "exit" :: Nil => true
@@ -226,7 +226,7 @@ namespace Cli {
             }
         }
         
-        def stateString(g: Game): String & Impure = {
+        def stateString(g: Game[r]): String & r = {
             use Int32.max;
             use Array.length;
             let drawCount = drawPileCount(g);
@@ -243,7 +243,7 @@ namespace Cli {
             (deckLine :: cardPiles) |> String.intercalate(String.lineSeparator())
         }
 
-        def arrayGetOpt(i: Int32, a: Array[a, Static]): Option[a] & Impure =
+        def arrayGetOpt(i: Int32, a: Array[a, r]): Option[a] & r =
             if (0 <= i and i < a.length) Some(a[i]) else None
     }
 }
